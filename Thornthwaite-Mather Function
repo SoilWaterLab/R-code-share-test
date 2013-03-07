@@ -1,0 +1,38 @@
+######################################################
+## Thornthwaite-Mather Function
+
+TM<-function(P,PET,Rc,AWC, F1, SAT){
+# Parameters:
+  # P = precip, in depth
+  # PET [depth]
+  # Rc = Recession coefficient [0-1]
+  # AWC = Available Water Capacity [depth]
+  # F1 = flow on the first day [depth/day]
+  # SAT = porosity [depth]
+  deltaP <- P-PET
+  SW <- rep(AWC,length(P))  #Soil Water
+  Excess <- rep(0,length(P))	# Excess becomes overland flow
+  Runoff <- rep(0,length(P))	# Runoff
+  S <- vector(length=length(P))	# Groundwater storage
+  S[1] <- F1/Rc    				# Initial storage calculated from observed flow before our model run
+  baseflow<-vector(length=length(P))		# baseflow
+  for(i in 2:length(P)){
+    if(deltaP[i]<0){ 				# Condition 1:  drying
+      SW[i] <- SW[i-1]*exp(deltaP[i]/AWC)
+      } else if (SW[i-1]+deltaP[i]<=AWC){ # Condition 2: wetting soil up to field capacity (FC)
+        SW[i] <- SW[i-1]+deltaP[i]
+      } else if (SW[i-1]+deltaP[i]<=SAT){  # Condition 3: wetting up to saturation - water above FC but below SAT contributes to S
+        Excess[i] <- SW[i-1]+deltaP[i]-AWC   
+      } else { 								# Condition 4: Saturation-excess overland flow
+        Runoff[i] <- SW[i-1]+deltaP[i]-SAT
+        Excess[i] <- SAT-AWC
+      }
+  S[i]<-(1-Rc)*S[i-1]+Excess[i]  
+  }
+  baseflow<-S*Rc
+  Q<-baseflow+Runoff
+  return(data.frame(SW,Excess,S,baseflow,Q))
+}
+
+
+
